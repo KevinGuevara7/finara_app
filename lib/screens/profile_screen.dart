@@ -13,6 +13,7 @@ import 'package:finara_app_v1/providers/languaje_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:convert';
 
 
 
@@ -24,7 +25,11 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
+
+
 class CurrencyInputFormatter extends TextInputFormatter {
+
+  
   @override
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
@@ -63,6 +68,7 @@ Map<String, dynamic> _getCategoryData(String description) {
 class _ProfileScreenState extends State<ProfileScreen> {
   final NumberFormat formatter = NumberFormat("#,##0.00", "en_US");
 
+  String? profileImageUrl;
   String name = "";
   String email = "";
 
@@ -182,6 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
+      
 
       //DRAWER (MENU)
       drawer: Drawer(
@@ -195,15 +202,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               currentAccountPicture: Stack(
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: Colors.white24,
-                    // Aquí pondremos la lógica de la foto más adelante
-                    child: Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : "U",
-                      style: const TextStyle(fontSize: 30, color: Colors.white),
-                    ),
-                  ),
+                 CircleAvatar(
+  radius: 40,
+  backgroundColor: Colors.white24,
+  // El '!' después de profileImageUrl solo se pone si ya comprobaste que no es nulo
+  backgroundImage: (profileImageUrl != null && profileImageUrl!.isNotEmpty)
+      ? NetworkImage(profileImageUrl!)
+      : null, 
+  child: (profileImageUrl == null || profileImageUrl!.isEmpty)
+      ? const Icon(Icons.person, size: 40, color: Colors.white)
+      : null,
+),
                   Positioned(
                     bottom: 0,
                     right: 0,
@@ -1192,25 +1201,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
   if (image != null) {
-    var request = http.MultipartRequest('POST', Uri.parse('https://finara-app.onrender.com/users/upload-profile-picture'));
+    var request = http.MultipartRequest(
+      'POST', 
+      Uri.parse('https://finara-app.onrender.com/users/upload-profile-picture')
+    );
     
+    // Si manejas tokens de seguridad, no olvides agregarlo:
+    // request.headers['Authorization'] = 'Bearer $tuToken';
+
     if (kIsWeb) {
-      // SOLUCIÓN PARA WEB: Leer los bytes de la imagen
       var bytes = await image.readAsBytes();
-      var multipartFile = http.MultipartFile.fromBytes(
-        'file', 
-        bytes, 
-        filename: image.name
-      );
-      request.files.add(multipartFile);
+      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: image.name));
     } else {
-      // SOLUCIÓN PARA MÓVIL
       request.files.add(await http.MultipartFile.fromPath('file', image.path));
     }
 
-    await request.send();
-  }
+    // --- EL CAMBIO ESTÁ AQUÍ ---
+    try {
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
 
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        
+        setState(() {
+          // 'url' es el nombre que configuramos en el backend de FastAPI
+          // Agregamos un timestamp (?v=...) para evitar que el caché de Flutter ignore el cambio
+          profileImageUrl = "${data['url']}?v=${DateTime.now().millisecondsSinceEpoch}";
+        });
+        
+        print("¡Imagen subida y actualizada!");
+      } else {
+        print("Error en el servidor: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error de red: $e");
+    }
+  } else {
+    print("No se seleccionó ninguna imagen.");
+  }
 }
 }
 
