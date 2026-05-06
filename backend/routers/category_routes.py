@@ -67,7 +67,7 @@ def create_category(
     return new_category
 
 # --- ACTUALIZAR CATEGORÍA ---
-@router.put("/categories/{category_id}")
+@router.put("/{category_id}")
 def update_category(
     category_id: int,
     category_data: schemas.CategoryCreate,

@@ -12,7 +12,20 @@ import os
 from routers import auth_routes, user_routes, transaction_routes, video_routes, lecturas_routes, stock_routes, category_routes
 
 
+# 1. Crear la aplicación backend
+app = FastAPI(
+    title="Finara API",
+    version="1.0"
+)
 
+# 2. CONFIGURACIÓN DE CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permitir todas las fuentes (en producción, especifica tu frontend)
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 from routers import (
@@ -27,20 +40,7 @@ from routers import (
 
 from routers.news_routes import news_router
 
-# 1. Crear la aplicación backend
-app = FastAPI(
-    title="Finara API",
-    version="1.0"
-)
 
-# 2. CONFIGURACIÓN DE CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Permitir todas las fuentes (en producción, especifica tu frontend)
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # 3. Crear las tablas en la base de datos
 models.Base.metadata.create_all(bind=engine)

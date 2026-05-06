@@ -153,50 +153,95 @@ class ApiService {
 
   static Future<List<dynamic>> getTransactionCategories(String token) async {
   try {
+    // CAMBIO AQUÍ: Solo una vez la palabra categories y sin barra final
+    final url = Uri.parse("$baseUrl/categories"); 
+
     final response = await http.get(
-      Uri.parse("$baseUrl/categories/categories/"), // <--- RUTA DOBLE Y CON BARRA AL FINAL
-      headers: {"Authorization": "Bearer $token"},
+      url,
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body); // Esto llenará tu Dropdown
+      return jsonDecode(response.body);
+    } else {
+      print("Error en GET: ${response.statusCode}");
+      return [];
     }
-    return [];
   } catch (e) {
+    print("Excepción en GET: $e");
     return [];
   }
 }
 
   // 2. CREAR CATEGORÍA
 static Future<bool> createCategory(String token, String name, String type) async {
-  final response = await http.post(
-    Uri.parse("$baseUrl/categories/categories/"), // <--- MISMA RUTA QUE EL GET
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer $token"
-    },
-    body: jsonEncode({"name": name, "type": type}),
-  );
-  // Aceptamos 200 o 201 como éxito
-  return response.statusCode == 200 || response.statusCode == 201;
-}
+  try {
+    // Construcción limpia: Sin barras dobles y sin barra final
+    // Resultado esperado: https://finara-api-1lmd.onrender.com/categories
+    final url = Uri.parse("$baseUrl/categories"); 
 
-  // --- ACTUALIZAR (PUT) ---
-  // Necesitamos el ID para saber cuál editar
-  static Future<bool> updateCategory(
-      String token, int id, String name, String type) async {
-    final response = await http.put(
-      Uri.parse(
-          "$baseUrl/categories/$id"), // Verifica si tu API usa / al final
+    print("🚀 Petición POST a: $url");
+
+    final response = await http.post(
+      url,
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token"
       },
-      body: jsonEncode({"name": name, "type": type}),
+      body: jsonEncode({
+        "name": name, 
+        "type": type
+      }),
     );
-    return response.statusCode == 200;
-  }
 
+    print("📊 Status Code: ${response.statusCode}");
+    print("📝 Body: ${response.body}");
+
+    // Render suele ser estricto: 201 es 'Created', 200 es 'OK'
+    return response.statusCode == 201 || response.statusCode == 200;
+  } catch (e) {
+    print("❌ Error de red en ApiService: $e");
+    return false;
+  }
+}
+
+  // --- ACTUALIZAR (PUT) ---
+static Future<bool> updateCategory(String token, int id, String name, String type) async {
+  try {
+    // IMPORTANTE: baseUrl no debe terminar en /
+    // La URL debe ser exactamente: https://finara-api-1lmd.onrender.com/categories/$id
+    final url = Uri.parse("${baseUrl.replaceAll(RegExp(r'/$'), '')}/categories/$id");
+
+    print("🚀 Enviando actualización a: $url");
+
+    final response = await http.put(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
+      },
+      body: jsonEncode({
+        "name": name,
+        "type": type,
+      }),
+    );
+
+    print("📊 Status del Backend: ${response.statusCode}");
+    
+    if (response.statusCode == 405) {
+      print("❌ Sigue saliendo 405. Revisa que en Render el cambio del backend ya se haya aplicado.");
+    }
+
+    return response.statusCode == 200;
+  } catch (e) {
+    print("❌ Error de red: $e");
+    return false;
+  }
+}
   // --- ELIMINAR (DELETE) ---
   static Future<bool> deleteCategory(String token, int id) async {
   try {

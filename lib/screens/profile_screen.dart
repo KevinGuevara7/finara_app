@@ -13,10 +13,8 @@ import 'package:finara_app_v1/providers/languaje_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'dart:convert';
-
-
-
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -25,11 +23,7 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-
-
 class CurrencyInputFormatter extends TextInputFormatter {
-
-  
   @override
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
@@ -127,6 +121,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final auth = context.read<AuthProvider>();
     final data = await ApiService.getTransactionCategories(auth.token!);
 
+    if (!mounted) return;
+
     setState(() {
       categories = data.map((e) => CategoryModel.fromMap(e)).toList();
     });
@@ -188,7 +184,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
-      
 
       //DRAWER (MENU)
       drawer: Drawer(
@@ -202,17 +197,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               currentAccountPicture: Stack(
                 children: [
-                 CircleAvatar(
-  radius: 40,
-  backgroundColor: Colors.white24,
-  // El '!' después de profileImageUrl solo se pone si ya comprobaste que no es nulo
-  backgroundImage: (profileImageUrl != null && profileImageUrl!.isNotEmpty)
-      ? NetworkImage(profileImageUrl!)
-      : null, 
-  child: (profileImageUrl == null || profileImageUrl!.isEmpty)
-      ? const Icon(Icons.person, size: 40, color: Colors.white)
-      : null,
-),
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundColor: Colors.white24,
+                    // El '!' después de profileImageUrl solo se pone si ya comprobaste que no es nulo
+                    backgroundImage:
+                        (profileImageUrl != null && profileImageUrl!.isNotEmpty)
+                            ? NetworkImage(profileImageUrl!)
+                            : null,
+                    child: (profileImageUrl == null || profileImageUrl!.isEmpty)
+                        ? const Icon(Icons.person,
+                            size: 40, color: Colors.white)
+                        : null,
+                  ),
                   Positioned(
                     bottom: 0,
                     right: 0,
@@ -645,11 +642,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 10),
 
 // 1. Botón para crear nueva
+                          // 1. Botón para crear nueva
                           TextButton(
                             onPressed: () async {
                               String? nueva =
                                   await _mostrarDialogoNuevaCategoria();
+
                               if (nueva != null && nueva.isNotEmpty) {
+                                // Validación local: Usamos ignoreCase para mayor seguridad
                                 if (localCategories.any((c) =>
                                     c.name.toLowerCase() ==
                                     nueva.toLowerCase())) {
@@ -662,16 +662,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 }
 
                                 final auth = context.read<AuthProvider>();
+                                // Asumimos que la API devuelve el objeto creado o al menos confirma el éxito
                                 bool success = await ApiService.createCategory(
                                     auth.token!, nueva, type);
 
                                 if (success) {
-                                  await loadCategories();
+                                  await loadCategories(); // Recarga la lista global 'categories'
+
                                   setStateDialog(() {
+                                    // ACTUALIZACIÓN CRÍTICA:
+                                    // 1. Sincronizamos la lista local con la global recién cargada
                                     localCategories = List.from(categories);
-                                    if (localCategories.isNotEmpty) {
-                                      selectedCategoryId =
-                                          int.parse(localCategories.last.id);
+
+                                    // 2. Filtramos inmediatamente para que el Dropdown vea el cambio
+                                    final filtered = localCategories
+                                        .where((c) => c.type == type)
+                                        .toList();
+
+                                    if (filtered.isNotEmpty) {
+                                      // 3. Intentamos encontrar la que acabamos de crear por nombre
+                                      // (Es más seguro que .last si la lista viene ordenada del servidor)
+                                      final creada = filtered.firstWhere(
+                                        (c) =>
+                                            c.name.toLowerCase() ==
+                                            nueva.toLowerCase(),
+                                        orElse: () => filtered.last,
+                                      );
+                                      selectedCategoryId = int.parse(creada.id);
                                     }
                                   });
                                 }
@@ -701,7 +718,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     isExpanded: true,
                                     underline: const SizedBox(),
                                     icon: const Icon(Icons.keyboard_arrow_down),
-                                    items: filteredCategories.map((cat) {
+                                    // IMPORTANTE: Asegúrate de que filteredCategories se re-calcule
+                                    // antes de este punto en el build del diálogo.
+                                    items: localCategories
+                                        .where((c) =>
+                                            c.type ==
+                                            type) // Filtramos aquí directamente para evitar desfases
+                                        .map((cat) {
                                       return DropdownMenuItem<int>(
                                         value: int.parse(cat.id),
                                         child: Text(cat.name),
@@ -709,40 +732,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     }).toList(),
                                     onChanged: (v) {
                                       setStateDialog(
-                                          () => selectedCategoryId = v!);
+                                          () => selectedCategoryId = v);
                                     },
                                   ),
                                 ),
                               ),
-
-                              // Si hay una categoría seleccionada, mostramos acciones de CRUD
                               if (selectedCategoryId != null) ...[
                                 // BOTÓN EDITAR
                                 IconButton(
                                   icon: const Icon(Icons.edit_outlined,
                                       color: Colors.blueAccent),
                                   onPressed: () async {
+                                    // Buscamos en localCategories directamente
                                     final catActual =
-                                        filteredCategories.firstWhere((c) =>
-                                            int.parse(c.id) ==
-                                            selectedCategoryId);
+                                        localCategories.firstWhere(
+                                      (c) =>
+                                          int.parse(c.id) == selectedCategoryId,
+                                    );
+
                                     String? nuevoNombre =
                                         await _mostrarDialogoNuevaCategoria(
-                                            valorInicial: catActual.name);
+                                      valorInicial: catActual.name,
+                                    );
 
                                     if (nuevoNombre != null &&
                                         nuevoNombre.isNotEmpty) {
                                       final auth = context.read<AuthProvider>();
                                       bool success =
                                           await ApiService.updateCategory(
-                                              auth.token!,
-                                              selectedCategoryId!,
-                                              nuevoNombre,
-                                              type);
+                                        auth.token!,
+                                        selectedCategoryId!,
+                                        nuevoNombre,
+                                        type,
+                                      );
                                       if (success) {
                                         await loadCategories();
-                                        setStateDialog(() => localCategories =
-                                            List.from(categories));
+                                        setStateDialog(() {
+                                          localCategories =
+                                              List.from(categories);
+                                        });
                                       }
                                     }
                                   },
@@ -752,36 +780,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   icon: const Icon(Icons.delete_outline,
                                       color: Colors.redAccent),
                                   onPressed: () async {
-                                    final auth = context.read<AuthProvider>();
-                                    // Confirmación rápida
                                     bool? confirmar = await showDialog<bool>(
                                       context: context,
                                       builder: (ctx) => AlertDialog(
-                                        title: const Text("¿Eliminar?"),
+                                        title:
+                                            const Text("¿Eliminar categoría?"),
+                                        content: const Text(
+                                            "Esta acción no se puede deshacer."),
                                         actions: [
                                           TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, false),
-                                              child: const Text("No")),
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, false),
+                                            child: const Text("Cancelar"),
+                                          ),
                                           TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, true),
-                                              child: const Text("Sí, borrar")),
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, true),
+                                            child: const Text("Eliminar",
+                                                style: TextStyle(
+                                                    color: Colors.red)),
+                                          ),
                                         ],
                                       ),
                                     );
 
                                     if (confirmar == true) {
+                                      final auth = context.read<AuthProvider>();
                                       bool success =
                                           await ApiService.deleteCategory(
-                                              auth.token!, selectedCategoryId!);
+                                        auth.token!,
+                                        selectedCategoryId!,
+                                      );
                                       if (success) {
                                         await loadCategories();
                                         setStateDialog(() {
                                           localCategories =
                                               List.from(categories);
                                           selectedCategoryId =
-                                              null; // Limpiamos selección tras borrar
+                                              null; // Reset de selección
                                         });
                                       }
                                     }
@@ -1184,7 +1220,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       langProvider.setLanguage(key);
                       Navigator.pop(context);
                     },
-                    
                   );
                 },
               ),
@@ -1194,52 +1229,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     );
   }
-  
 
- Future<void> _pickImage() async {
-  final ImagePicker picker = ImagePicker();
-  final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
-  if (image != null) {
-    var request = http.MultipartRequest(
-      'POST', 
-      Uri.parse('https://finara-app.onrender.com/users/upload-profile-picture')
-    );
-    
-    // Si manejas tokens de seguridad, no olvides agregarlo:
-    // request.headers['Authorization'] = 'Bearer $tuToken';
+    if (image != null) {
+      var request = http.MultipartRequest(
+          'POST',
+          Uri.parse(
+              'https://finara-app.onrender.com/users/upload-profile-picture'));
 
-    if (kIsWeb) {
-      var bytes = await image.readAsBytes();
-      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: image.name));
-    } else {
-      request.files.add(await http.MultipartFile.fromPath('file', image.path));
-    }
+      // Si manejas tokens de seguridad, no olvides agregarlo:
+      // request.headers['Authorization'] = 'Bearer $tuToken';
 
-    // --- EL CAMBIO ESTÁ AQUÍ ---
-    try {
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        
-        setState(() {
-          // 'url' es el nombre que configuramos en el backend de FastAPI
-          // Agregamos un timestamp (?v=...) para evitar que el caché de Flutter ignore el cambio
-          profileImageUrl = "${data['url']}?v=${DateTime.now().millisecondsSinceEpoch}";
-        });
-        
-        print("¡Imagen subida y actualizada!");
+      if (kIsWeb) {
+        var bytes = await image.readAsBytes();
+        request.files.add(
+            http.MultipartFile.fromBytes('file', bytes, filename: image.name));
       } else {
-        print("Error en el servidor: ${response.statusCode}");
+        request.files
+            .add(await http.MultipartFile.fromPath('file', image.path));
       }
-    } catch (e) {
-      print("Error de red: $e");
+
+      // --- EL CAMBIO ESTÁ AQUÍ ---
+      try {
+        var streamedResponse = await request.send();
+        var response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> data = json.decode(response.body);
+
+          setState(() {
+            // 'url' es el nombre que configuramos en el backend de FastAPI
+            // Agregamos un timestamp (?v=...) para evitar que el caché de Flutter ignore el cambio
+            profileImageUrl =
+                "${data['url']}?v=${DateTime.now().millisecondsSinceEpoch}";
+          });
+
+          print("¡Imagen subida y actualizada!");
+        } else {
+          print("Error en el servidor: ${response.statusCode}");
+        }
+      } catch (e) {
+        print("Error de red: $e");
+      }
+    } else {
+      print("No se seleccionó ninguna imagen.");
     }
-  } else {
-    print("No se seleccionó ninguna imagen.");
   }
 }
-}
-
