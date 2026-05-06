@@ -311,7 +311,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 30,
-                  backgroundColor: primaryColor,
+                  backgroundColor: const Color.fromARGB(255, 6, 78, 59),
                   child:
                       const Icon(Icons.person, size: 30, color: Colors.white),
                 ),
@@ -400,8 +400,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           margin: const EdgeInsets.only(right: 10),
                           padding: const EdgeInsets.all(15),
                           decoration: BoxDecoration(
-                            color:
-                                isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                            color: isDark
+                                ? const Color.fromARGB(255, 6, 78, 59)
+                                : Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: isDark
                                 ? []
@@ -412,29 +413,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ],
                           ),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(meta.nombre,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(meta.nombre,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16)),
+                                    ),
+                                    Row(
+                                      children: [
+                                        GestureDetector(
+                                          onTap: () => _editarMeta(index),
+                                          child: const Icon(Icons.edit,
+                                              size: 18,
+                                              color: Color.fromARGB(255, 5, 46, 35)),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () => _eliminarMeta(index),
+                                          child: const Icon(Icons.delete,
+                                              size: 18, color: Colors.red),
+                                        ),
+                                      ],
+                                    )
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                LinearProgressIndicator(
+                                  value: meta.progreso.clamp(0, 1),
+                                  backgroundColor: Colors.grey[300],
+                                  color: const Color(0xFF00C853),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                    "${meta.porcentaje.toStringAsFixed(1)}% completado"),
+                                const SizedBox(height: 5),
+                                Text(
+                                  "Faltan: ${meta.mesesRestantes} meses",
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16)),
-                              const SizedBox(height: 10),
-                              LinearProgressIndicator(
-                                value: meta.progreso.clamp(0, 1),
-                                backgroundColor: Colors.grey[300],
-                                color: const Color(0xFF00C853),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                  "${meta.porcentaje.toStringAsFixed(1)}% completado"),
-                              const SizedBox(height: 5),
-                              Text(
-                                "Faltan: ${meta.mesesRestantes} meses",
-                                style: const TextStyle(
-                                    fontSize: 12, color: Colors.grey),
-                              ),
-                            ],
-                          ),
+                                      fontSize: 12, color: Colors.grey),
+                                ),
+                              ]),
                         );
                       },
                     ),
@@ -1490,6 +1514,99 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
         );
       },
+    );
+  }
+
+// 👇 AQUÍ PEGAS ESTAS
+  void _editarMeta(int index) {
+    final metas = context.read<AuthProvider>().metas;
+    final meta = metas[index];
+
+    TextEditingController nombre = TextEditingController(text: meta.nombre);
+    TextEditingController montoMeta =
+        TextEditingController(text: meta.montoMeta.toString());
+    TextEditingController ahorroMensual =
+        TextEditingController(text: meta.ahorroMensual.toString());
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(30)),
+              ),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  left: 25,
+                  right: 25,
+                  top: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                child: Column(
+                  children: [
+                    const Text("Editar Meta",
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF064E3B))),
+                    const SizedBox(height: 20),
+                    TextField(controller: nombre),
+                    TextField(controller: montoMeta),
+                    TextField(controller: ahorroMensual),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        context.read<AuthProvider>().editarMeta(
+                              index,
+                              MetaAhorro(
+                                nombre: nombre.text,
+                                montoMeta: double.parse(montoMeta.text),
+                                ahorroMensual: double.parse(ahorroMensual.text),
+                              ),
+                            );
+
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Guardar"),
+                    )
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _eliminarMeta(int index) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Eliminar meta"),
+        content: const Text("¿Seguro?"),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancelar")),
+          TextButton(
+            onPressed: () {
+              context.read<AuthProvider>().eliminarMeta(index);
+              Navigator.pop(context);
+            },
+            child: const Text("Eliminar", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 }

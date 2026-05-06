@@ -21,6 +21,7 @@ class AuthProvider extends ChangeNotifier {
 
       await storage.write(key: "jwt_token", value: token);
 
+
       notifyListeners();
 
       return true;
@@ -66,25 +67,38 @@ class AuthProvider extends ChangeNotifier {
   List<MetaAhorro> get metas => _metas;
 
   void addMeta(MetaAhorro meta) {
-  _metas.add(meta);
-  notifyListeners();
-}
+    _metas.add(meta);
+    notifyListeners();
+  }
 
   //aCTUALIZAR METAS
   void actualizarMetasConIngreso(double ingreso) {
-  for (var meta in _metas) {
-    meta.montoActual += ingreso * 0.1; // 10% automático
+    for (var meta in _metas) {
+      meta.montoActual += ingreso * 0.1; // 10% automático
+    }
+    notifyListeners();
   }
-  notifyListeners();
-}
 
   //Limpiar metas (ejemplo al cerrar sesión)
   Future<void> logoutM() async {
-  _token = null;
-  _metas.clear(); //IMPORTANTE
+    _token = null;
+    _metas.clear(); //IMPORTANTE
 
-  await storage.delete(key: "jwt_token");
+    await storage.delete(key: "jwt_token");
 
-  notifyListeners();
-}
+    notifyListeners();
+  }
+
+  //Editar Metas
+  void editarMeta(int index, MetaAhorro nueva) {
+    metas[index] = nueva;
+    notifyListeners();
+  }
+
+  //Eliminar Meta
+  void eliminarMeta(int index) {
+    metas.removeAt(index);
+    notifyListeners();
+  }
+
 }
