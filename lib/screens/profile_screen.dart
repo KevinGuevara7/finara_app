@@ -13,6 +13,7 @@ import 'package:finara_app_v1/providers/languaje_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:finara_app_v1/models/meta_ahorro.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -151,6 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final metas = context.watch<AuthProvider>().metas;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     const Color primaryColor = Color(0xFF064E3B);
 
@@ -366,6 +368,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
+            //SECCIÓN METAS
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Metas de ahorro",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  onPressed: _crearMeta,
+                  icon: const Icon(Icons.add, color: Color(0xFF00C853)),
+                )
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            SizedBox(
+              height: 180,
+              child: metas.isEmpty
+                  ? const Center(child: Text("No hay metas aún"))
+                  : ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: metas.length,
+                      itemBuilder: (context, index) {
+                        final meta = metas[index];
+
+                        return Container(
+                          width: 220,
+                          margin: const EdgeInsets.only(right: 10),
+                          padding: const EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            color:
+                                isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: isDark
+                                ? []
+                                : [
+                                    BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 10)
+                                  ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(meta.nombre,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16)),
+                              const SizedBox(height: 10),
+                              LinearProgressIndicator(
+                                value: meta.progreso.clamp(0, 1),
+                                backgroundColor: Colors.grey[300],
+                                color: const Color(0xFF00C853),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                  "${meta.porcentaje.toStringAsFixed(1)}% completado"),
+                              const SizedBox(height: 5),
+                              Text(
+                                "Faltan: ${meta.mesesRestantes} meses",
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+
             const SizedBox(height: 20),
 
             //TÍTULO Y BOTÓN AGREGAR
@@ -542,7 +616,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: Column(
                 children: [
-                  // 🔹 BARRA SUPERIOR (Indicador de arrastre)
+                  //BARRA SUPERIOR (Indicador de arrastre)
                   const SizedBox(height: 12),
                   Container(
                     width: 50,
@@ -789,7 +863,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                           const SizedBox(height: 25),
 
-                          // --- AQUÍ REGRESA LA FECHA ---
+                          //AQUÍ REGRESA LA FECHA
                           const TranslatedText("Fecha",
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -832,7 +906,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                           const SizedBox(height: 25),
 
-                          // --- AQUÍ REGRESA LA DESCRIPCIÓN (NOTAS) ---
+                          //Notas
                           const TranslatedText("Notas",
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -860,7 +934,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 35),
                           // BOTÓN GUARDAR
 
-                          // ... (SizedBox después del TextField de Notas)
+                          //(SizedBox después del TextField de Notas)
                           const SizedBox(height: 30),
 
                           SizedBox(
@@ -932,6 +1006,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           desc.text,
                                           categoryId,
                                         );
+                                        if (type == "ingreso") {
+                                          context
+                                              .read<AuthProvider>()
+                                              .actualizarMetasConIngreso(
+                                                  montoFinal);
+                                        }
                                       } else {
                                         // ES EDICIÓN
                                         success =
@@ -1146,7 +1226,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-// El Modal de Idioma que ya tenías, pero llamado desde afuera
+// El Modal de Idioma pero llamado desde afuera
   void _showLanguagePicker(
       BuildContext context, LanguageProvider langProvider) {
     showModalBottomSheet(
@@ -1201,18 +1281,215 @@ class _ProfileScreenState extends State<ProfileScreen> {
               'https://finara-api-1lmd.onrender.com/users/upload-profile-picture'));
 
       if (kIsWeb) {
-        // SOLUCIÓN PARA WEB: Leer los bytes de la imagen
+        //SOLUCIÓN WEB: Leer los bytes de la imagen
         var bytes = await image.readAsBytes();
         var multipartFile =
             http.MultipartFile.fromBytes('file', bytes, filename: image.name);
         request.files.add(multipartFile);
       } else {
-        // SOLUCIÓN PARA MÓVIL
+        //SOLUCIÓN MÓVIL
         request.files
             .add(await http.MultipartFile.fromPath('file', image.path));
       }
 
       await request.send();
     }
+  }
+
+  void _crearMeta() {
+    TextEditingController nombre = TextEditingController();
+    TextEditingController montoMeta = TextEditingController();
+    TextEditingController ahorroMensual = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(30)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+
+                  //Indicador de arrastre
+                  Container(
+                    width: 50,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.only(
+                        left: 25,
+                        right: 25,
+                        top: 20,
+                        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          //TÍTULO
+                          const Center(
+                            child: Text(
+                              "Nueva meta de ahorro",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF064E3B), // verde oscuro
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 30),
+
+                          //NOMBRE
+                          const Text(
+                            "Nombre",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: nombre,
+                            decoration: InputDecoration(
+                              hintText: "Ej: Viaje, Moto, Laptop...",
+                              filled: true,
+                              fillColor:
+                                  isDark ? Colors.black12 : Colors.grey[50],
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide:
+                                    BorderSide(color: Colors.grey[200]!),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 25),
+
+                          //MONTO META
+                          const Text(
+                            "Monto objetivo",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: montoMeta,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(Icons.attach_money,
+                                  color: Color(0xFF064E3B)),
+                              hintText: "0.00",
+                              filled: true,
+                              fillColor:
+                                  isDark ? Colors.black12 : Colors.grey[50],
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide:
+                                    BorderSide(color: Colors.grey[200]!),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 25),
+
+                          //AHORRO MENSUAL
+                          const Text(
+                            "Ahorro mensual",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: ahorroMensual,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(Icons.savings,
+                                  color: Color(0xFF064E3B)),
+                              hintText: "Opcional",
+                              filled: true,
+                              fillColor:
+                                  isDark ? Colors.black12 : Colors.grey[50],
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide:
+                                    BorderSide(color: Colors.grey[200]!),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 35),
+
+                          //BTN GUARDAR
+                          SizedBox(
+                            width: double.infinity,
+                            height: 55,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    const Color(0xFF00C853), // verde claro
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15)),
+                              ),
+                              onPressed: () {
+                                if (nombre.text.isEmpty ||
+                                    montoMeta.text.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            "Completa los campos obligatorios")),
+                                  );
+                                  return;
+                                }
+
+                                context.read<AuthProvider>().addMeta(
+                                      MetaAhorro(
+                                        nombre: nombre.text,
+                                        montoMeta: double.parse(montoMeta.text),
+                                        ahorroMensual: double.tryParse(
+                                                ahorroMensual.text) ??
+                                            0,
+                                      ),
+                                    );
+
+                                Navigator.pop(context);
+                              },
+                              child: const Text(
+                                "Guardar meta",
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }
