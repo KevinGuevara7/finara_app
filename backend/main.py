@@ -1,26 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
-<<<<<<< HEAD
+from fastapi import FastAPI, UploadFile, File, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from routers.news_routes import news_router
-import models
-=======
-from fastapi import UploadFile, File
 from sqlalchemy.orm import Session
-from fastapi import Depends
-from database import get_db
-from sqlalchemy.orm import Session
-import models  # IMPORTANTE para registrar modelos
 import shutil
 import os
-from routers import auth_routes, user_routes, transaction_routes, video_routes, lecturas_routes, stock_routes, category_routes
 
-
-
-
->>>>>>> bbad7c2 (feat: add upload profile picture endpoint and static files support)
-
+# Importaciones de tu proyecto
+from database import get_db
+import models  
 from routers import (
     auth_routes, 
     user_routes, 
@@ -31,6 +21,7 @@ from routers import (
     category_routes,
     message_routes
 )
+from routers.news_routes import news_router
 
 # 1. Crear la aplicación backend
 app = FastAPI(
@@ -38,30 +29,32 @@ app = FastAPI(
     version="1.0"
 )
 
+# Soporte para archivos estáticos (Para las fotos de perfil)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# 2. CORS
+# 2. CONFIGURACIÓN DE CORS
+# Aseguramos que PUT esté explícito para evitar el error 405
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permitir todas las fuentes (en producción, especifica tu frontend)
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
-# 3. DB
-models.Base.metadata.create_all(bind=engine)
-
-# 4. Routers
+# 3. Incluir Routers (Aquí van todos tus módulos)
 app.include_router(auth_routes.router)
 app.include_router(user_routes.router)
 app.include_router(transaction_routes.router)
-app.include_router(category_routes.router)
-app.include_router(news_router)
 app.include_router(video_routes.router)
 app.include_router(lecturas_routes.router)
-app.include_router(stock_routes.stock_router)
+app.include_router(stock_routes.router)
+app.include_router(category_routes.router)
 app.include_router(message_routes.router)
+app.include_router(news_router)
+# 4. DB
+models.Base.metadata.create_all(bind=engine)
+
 
 @app.get("/")
 def read_root():

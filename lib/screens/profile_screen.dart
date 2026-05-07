@@ -13,6 +13,7 @@ import 'package:finara_app_v1/providers/languaje_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'dart:convert';
 
 class ProfileScreen extends StatefulWidget {
@@ -119,6 +120,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> loadCategories() async {
     final auth = context.read<AuthProvider>();
     final data = await ApiService.getTransactionCategories(auth.token!);
+
+    if (!mounted) return;
 
     setState(() {
       categories = data.map((e) => CategoryModel.fromMap(e)).toList();
@@ -647,11 +650,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 10),
 
 // 1. Botón para crear nueva
+                          // 1. Botón para crear nueva
                           TextButton(
                             onPressed: () async {
                               String? nueva =
                                   await _mostrarDialogoNuevaCategoria();
+
                               if (nueva != null && nueva.isNotEmpty) {
+                                // Validación local: Usamos ignoreCase para mayor seguridad
                                 if (localCategories.any((c) =>
                                     c.name.toLowerCase() ==
                                     nueva.toLowerCase())) {
@@ -664,16 +670,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 }
 
                                 final auth = context.read<AuthProvider>();
+                                // Asumimos que la API devuelve el objeto creado o al menos confirma el éxito
                                 bool success = await ApiService.createCategory(
                                     auth.token!, nueva, type);
 
                                 if (success) {
-                                  await loadCategories();
+                                  await loadCategories(); // Recarga la lista global 'categories'
+
                                   setStateDialog(() {
+                                    // ACTUALIZACIÓN CRÍTICA:
+                                    // 1. Sincronizamos la lista local con la global recién cargada
                                     localCategories = List.from(categories);
-                                    if (localCategories.isNotEmpty) {
-                                      selectedCategoryId =
-                                          int.parse(localCategories.last.id);
+
+                                    // 2. Filtramos inmediatamente para que el Dropdown vea el cambio
+                                    final filtered = localCategories
+                                        .where((c) => c.type == type)
+                                        .toList();
+
+                                    if (filtered.isNotEmpty) {
+                                      // 3. Intentamos encontrar la que acabamos de crear por nombre
+                                      // (Es más seguro que .last si la lista viene ordenada del servidor)
+                                      final creada = filtered.firstWhere(
+                                        (c) =>
+                                            c.name.toLowerCase() ==
+                                            nueva.toLowerCase(),
+                                        orElse: () => filtered.last,
+                                      );
+                                      selectedCategoryId = int.parse(creada.id);
                                     }
                                   });
                                 }
@@ -703,7 +726,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     isExpanded: true,
                                     underline: const SizedBox(),
                                     icon: const Icon(Icons.keyboard_arrow_down),
-                                    items: filteredCategories.map((cat) {
+                                    // IMPORTANTE: Asegúrate de que filteredCategories se re-calcule
+                                    // antes de este punto en el build del diálogo.
+                                    items: localCategories
+                                        .where((c) =>
+                                            c.type ==
+                                            type) // Filtramos aquí directamente para evitar desfases
+                                        .map((cat) {
                                       return DropdownMenuItem<int>(
                                         value: int.parse(cat.id),
                                         child: Text(cat.name),
@@ -711,40 +740,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     }).toList(),
                                     onChanged: (v) {
                                       setStateDialog(
-                                          () => selectedCategoryId = v!);
+                                          () => selectedCategoryId = v);
                                     },
                                   ),
                                 ),
                               ),
-
-                              // Si hay una categoría seleccionada, mostramos acciones de CRUD
                               if (selectedCategoryId != null) ...[
                                 // BOTÓN EDITAR
                                 IconButton(
                                   icon: const Icon(Icons.edit_outlined,
                                       color: Colors.blueAccent),
                                   onPressed: () async {
+                                    // Buscamos en localCategories directamente
                                     final catActual =
-                                        filteredCategories.firstWhere((c) =>
-                                            int.parse(c.id) ==
-                                            selectedCategoryId);
+                                        localCategories.firstWhere(
+                                      (c) =>
+                                          int.parse(c.id) == selectedCategoryId,
+                                    );
+
                                     String? nuevoNombre =
                                         await _mostrarDialogoNuevaCategoria(
-                                            valorInicial: catActual.name);
+                                      valorInicial: catActual.name,
+                                    );
 
                                     if (nuevoNombre != null &&
                                         nuevoNombre.isNotEmpty) {
                                       final auth = context.read<AuthProvider>();
                                       bool success =
                                           await ApiService.updateCategory(
-                                              auth.token!,
-                                              selectedCategoryId!,
-                                              nuevoNombre,
-                                              type);
+                                        auth.token!,
+                                        selectedCategoryId!,
+                                        nuevoNombre,
+                                        type,
+                                      );
                                       if (success) {
                                         await loadCategories();
-                                        setStateDialog(() => localCategories =
-                                            List.from(categories));
+                                        setStateDialog(() {
+                                          localCategories =
+                                              List.from(categories);
+                                        });
                                       }
                                     }
                                   },
@@ -754,36 +788,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   icon: const Icon(Icons.delete_outline,
                                       color: Colors.redAccent),
                                   onPressed: () async {
-                                    final auth = context.read<AuthProvider>();
-                                    // Confirmación rápida
                                     bool? confirmar = await showDialog<bool>(
                                       context: context,
                                       builder: (ctx) => AlertDialog(
-                                        title: const Text("¿Eliminar?"),
+                                        title:
+                                            const Text("¿Eliminar categoría?"),
+                                        content: const Text(
+                                            "Esta acción no se puede deshacer."),
                                         actions: [
                                           TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, false),
-                                              child: const Text("No")),
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, false),
+                                            child: const Text("Cancelar"),
+                                          ),
                                           TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, true),
-                                              child: const Text("Sí, borrar")),
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, true),
+                                            child: const Text("Eliminar",
+                                                style: TextStyle(
+                                                    color: Colors.red)),
+                                          ),
                                         ],
                                       ),
                                     );
 
                                     if (confirmar == true) {
+                                      final auth = context.read<AuthProvider>();
                                       bool success =
                                           await ApiService.deleteCategory(
-                                              auth.token!, selectedCategoryId!);
+                                        auth.token!,
+                                        selectedCategoryId!,
+                                      );
                                       if (success) {
                                         await loadCategories();
                                         setStateDialog(() {
                                           localCategories =
                                               List.from(categories);
                                           selectedCategoryId =
-                                              null; // Limpiamos selección tras borrar
+                                              null; // Reset de selección
                                         });
                                       }
                                     }

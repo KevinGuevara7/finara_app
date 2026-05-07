@@ -140,6 +140,7 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getTransactionCategories(String token) async {
+
     try {
       final response = await http.get(
         Uri.parse(
@@ -156,7 +157,9 @@ class ApiService {
     }
   }
 
+
   // 2. CREAR CATEGORÍA
+
   static Future<bool> createCategory(
       String token, String name, String type) async {
     final response = await http.post(
@@ -173,20 +176,39 @@ class ApiService {
   }
 
   // --- ACTUALIZAR (PUT) ---
-  // Necesitamos el ID para saber cuál editar
-  static Future<bool> updateCategory(
-      String token, int id, String name, String type) async {
+static Future<bool> updateCategory(String token, int id, String name, String type) async {
+  try {
+    // IMPORTANTE: baseUrl no debe terminar en /
+    // La URL debe ser exactamente: https://finara-api-1lmd.onrender.com/categories/$id
+    final url = Uri.parse("${baseUrl.replaceAll(RegExp(r'/$'), '')}/categories/$id");
+
+    print("🚀 Enviando actualización a: $url");
+
     final response = await http.put(
-      Uri.parse("$baseUrl/categories/$id"), // Verifica si tu API usa / al final
+      url,
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer $token"
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
       },
-      body: jsonEncode({"name": name, "type": type}),
+      body: jsonEncode({
+        "name": name,
+        "type": type,
+      }),
     );
-    return response.statusCode == 200;
-  }
 
+    print("📊 Status del Backend: ${response.statusCode}");
+    
+    if (response.statusCode == 405) {
+      print("❌ Sigue saliendo 405. Revisa que en Render el cambio del backend ya se haya aplicado.");
+    }
+
+    return response.statusCode == 200;
+  } catch (e) {
+    print("❌ Error de red: $e");
+    return false;
+  }
+}
   // --- ELIMINAR (DELETE) ---
   static Future<bool> deleteCategory(String token, int id) async {
     try {
@@ -368,6 +390,7 @@ class ApiService {
         "url": url,
         "category_id": categoryId,
       }),
+  
     );
 
     return response.statusCode == 200 || response.statusCode == 201;
@@ -520,4 +543,5 @@ class ApiService {
 
     return jsonDecode(res.body);
   }
+
 }
