@@ -7,6 +7,10 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 import shutil
 import os
+from routers.news_routes import news_router
+from routers.notes_routes import router as notes_router
+import models
+
 
 # Importaciones de tu proyecto
 from database import get_db
@@ -23,7 +27,6 @@ from routers import (
 )
 from routers.news_routes import news_router
 
-# 1. Crear la aplicación backend
 app = FastAPI(
     title="Finara API",
     version="1.0"
@@ -31,9 +34,6 @@ app = FastAPI(
 
 # Soporte para archivos estáticos (Para las fotos de perfil)
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# 2. CONFIGURACIÓN DE CORS
-# Aseguramos que PUT esté explícito para evitar el error 405
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,7 +42,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # 3. Incluir Routers (Aquí van todos tus módulos)
+
+models.Base.metadata.create_all(bind=engine)
+
 app.include_router(auth_routes.router)
 app.include_router(user_routes.router)
 app.include_router(transaction_routes.router)
