@@ -1,16 +1,46 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
+<<<<<<< HEAD
 from fastapi import FastAPI, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+=======
+from fastapi import UploadFile, File
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from database import get_db
+from sqlalchemy.orm import Session
+import models  # IMPORTANTE para registrar modelos
+>>>>>>> e2f7b6da06f0219604efabd4e89cc59921fed427
 import shutil
 import os
+from routers import auth_routes, user_routes, transaction_routes, video_routes, lecturas_routes, stock_routes, category_routes
 
+<<<<<<< HEAD
 # Importaciones de tu proyecto
 from database import get_db
 import models  
+=======
+
+# 1. Crear la aplicación backend
+app = FastAPI(
+    title="Finara API",
+    version="1.0"
+)
+
+# 2. CONFIGURACIÓN DE CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permitir todas las fuentes (en producción, especifica tu frontend)
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+
+>>>>>>> e2f7b6da06f0219604efabd4e89cc59921fed427
 from routers import (
     auth_routes, 
     user_routes, 
@@ -23,12 +53,8 @@ from routers import (
 )
 from routers.news_routes import news_router
 
-# 1. Crear la aplicación backend
-app = FastAPI(
-    title="Finara API",
-    version="1.0"
-)
 
+<<<<<<< HEAD
 # Soporte para archivos estáticos (Para las fotos de perfil)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -41,6 +67,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+=======
+>>>>>>> e2f7b6da06f0219604efabd4e89cc59921fed427
 
 # 3. Incluir Routers (Aquí van todos tus módulos)
 app.include_router(auth_routes.router)

@@ -146,6 +146,7 @@ class ApiService {
     final url = Uri.parse("$baseUrl/categories"); 
 
     final response = await http.get(
+
       url,
       headers: {
         "Authorization": "Bearer $token",
@@ -162,8 +163,8 @@ class ApiService {
   } catch (e) {
     print("Excepción en GET: $e");
     return [];
- }
   }
+}
 
 
   // 2. CREAR CATEGORÍA (POST)
