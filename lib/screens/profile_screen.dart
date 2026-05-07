@@ -827,6 +827,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           selectedCategoryId =
                                               null; // Reset de selección
                                         });
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  "Categoría eliminada con éxito")),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  "Error al eliminar la categoría")),
+                                        );
                                       }
                                     }
                                   },

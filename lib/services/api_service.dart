@@ -141,55 +141,76 @@ class ApiService {
 
   static Future<List<dynamic>> getTransactionCategories(String token) async {
 
-    try {
-      final response = await http.get(
-        Uri.parse(
-            "$baseUrl/categories/categories/"), // <--- RUTA DOBLE Y CON BARRA AL FINAL
-        headers: {"Authorization": "Bearer $token"},
-      );
+  try {
+    // CAMBIO AQUÍ: Solo una vez la palabra categories y sin barra final
+    final url = Uri.parse("$baseUrl/categories"); 
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body); // Esto llenará tu Dropdown
-      }
-      return [];
-    } catch (e) {
+    final response = await http.get(
+      url,
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      print("Error en GET: ${response.statusCode}");
       return [];
     }
+  } catch (e) {
+    print("Excepción en GET: $e");
+    return [];
+ }
   }
 
 
-  // 2. CREAR CATEGORÍA
+  // 2. CREAR CATEGORÍA (POST)
+  static Future<bool> createCategory(String token, String name, String type) async {
+    try {
+      final url = Uri.parse("$baseUrl/categories"); // Solo una vez categories
 
-  static Future<bool> createCategory(
-      String token, String name, String type) async {
-    final response = await http.post(
-      Uri.parse(
-          "$baseUrl/categories/categories/"), // <--- MISMA RUTA QUE EL GET
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token"
-      },
-      body: jsonEncode({"name": name, "type": type}),
-    );
-    // Aceptamos 200 o 201 como éxito
-    return response.statusCode == 200 || response.statusCode == 201;
-  }
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+        body: jsonEncode({
+          "name": name,
+          "type": type,
+        }),
+      );
 
-  // --- ACTUALIZAR (PUT) ---
-static Future<bool> updateCategory(String token, int id, String name, String type) async {
+      print("🚀 Enviando creación a: $url");
+      print("📊 Status del Backend: ${response.statusCode}");
+      print("📄 Body del Backend: ${response.body}");
+
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print("❌ Error de red: $e");
+      return false;
+    }
+  
+}
+
+
+// --- ACTUALIZAR CATEGORÍA (PUT) ---
+  static Future<bool> updateCategory(String token, int id, String name, String type) async {
   try {
-    // IMPORTANTE: baseUrl no debe terminar en /
-    // La URL debe ser exactamente: https://finara-api-1lmd.onrender.com/categories/$id
-    final url = Uri.parse("${baseUrl.replaceAll(RegExp(r'/$'), '')}/categories/$id");
+    // Aseguramos que la URL sea limpia: base + /categories/ + id
+    final baseUrlClean = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final url = Uri.parse("$baseUrlClean/categories/$id");
 
-    print("🚀 Enviando actualización a: $url");
+    print("🚀 Intentando PUT a: $url");
 
     final response = await http.put(
       url,
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
-        "Accept": "application/json",
       },
       body: jsonEncode({
         "name": name,
@@ -198,11 +219,6 @@ static Future<bool> updateCategory(String token, int id, String name, String typ
     );
 
     print("📊 Status del Backend: ${response.statusCode}");
-    
-    if (response.statusCode == 405) {
-      print("❌ Sigue saliendo 405. Revisa que en Render el cambio del backend ya se haya aplicado.");
-    }
-
     return response.statusCode == 200;
   } catch (e) {
     print("❌ Error de red: $e");
@@ -390,7 +406,6 @@ static Future<bool> updateCategory(String token, int id, String name, String typ
         "url": url,
         "category_id": categoryId,
       }),
-  
     );
 
     return response.statusCode == 200 || response.statusCode == 201;
@@ -543,5 +558,4 @@ static Future<bool> updateCategory(String token, int id, String name, String typ
 
     return jsonDecode(res.body);
   }
-
 }
