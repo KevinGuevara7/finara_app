@@ -11,6 +11,8 @@ import os
 from routers.news_routes import news_router
 from routers.notes_routes import router as notes_router
 import models
+from routers import auth_routes  # ✅ Correcto si la carpeta routers está junto a main.py
+
 
 
 # Importaciones de tu proyecto
