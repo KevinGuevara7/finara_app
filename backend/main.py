@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from routers import category_routes
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
 from fastapi import FastAPI, UploadFile, File, Depends
@@ -31,6 +32,8 @@ app = FastAPI(
     title="Finara API",
     version="1.0"
 )
+
+app.include_router(category_routes.router, prefix="/categories", tags=["categories"])
 
 # Soporte para archivos estáticos (Para las fotos de perfil)
 app.mount("/static", StaticFiles(directory="static"), name="static")
