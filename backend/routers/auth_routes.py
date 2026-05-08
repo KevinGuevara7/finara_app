@@ -7,8 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 import models  # ✅ Esto funciona porque models.py está en la misma raíz
-# O también:
-from .. import models # Dependiendo de tu estructura
 from backend.routers.user_routes import get_current_user
 from database import SessionLocal
 from models import User, PasswordResetToken
