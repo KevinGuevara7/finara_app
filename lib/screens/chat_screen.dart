@@ -57,7 +57,10 @@ class _ChatScreenState extends State<ChatScreen> {
         : null;
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(
+        vertical: 6,
+        horizontal: 12,
+      ),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isMe
