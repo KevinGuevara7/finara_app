@@ -140,53 +140,92 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getTransactionCategories(String token) async {
-    try {
-      final response = await http.get(
-        Uri.parse(
-            "$baseUrl/categories/categories/"), // <--- RUTA DOBLE Y CON BARRA AL FINAL
-        headers: {"Authorization": "Bearer $token"},
-      );
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body); // Esto llenará tu Dropdown
-      }
-      return [];
-    } catch (e) {
+  try {
+    // CAMBIO AQUÍ: Solo una vez la palabra categories y sin barra final
+    final url = Uri.parse("$baseUrl/categories"); 
+
+    final response = await http.get(
+
+      url,
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      print("Error en GET: ${response.statusCode}");
       return [];
     }
+  } catch (e) {
+    print("Excepción en GET: $e");
+    return [];
   }
+}
 
-  // 2. CREAR CATEGORÍA
-  static Future<bool> createCategory(
-      String token, String name, String type) async {
-    final response = await http.post(
-      Uri.parse(
-          "$baseUrl/categories/categories/"), // <--- MISMA RUTA QUE EL GET
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token"
-      },
-      body: jsonEncode({"name": name, "type": type}),
-    );
-    // Aceptamos 200 o 201 como éxito
-    return response.statusCode == 200 || response.statusCode == 201;
-  }
 
-  // --- ACTUALIZAR (PUT) ---
-  // Necesitamos el ID para saber cuál editar
-  static Future<bool> updateCategory(
-      String token, int id, String name, String type) async {
+  // 2. CREAR CATEGORÍA (POST)
+  static Future<bool> createCategory(String token, String name, String type) async {
+    try {
+      final url = Uri.parse("$baseUrl/categories"); // Solo una vez categories
+
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+        body: jsonEncode({
+          "name": name,
+          "type": type,
+        }),
+      );
+
+      print("🚀 Enviando creación a: $url");
+      print("📊 Status del Backend: ${response.statusCode}");
+      print("📄 Body del Backend: ${response.body}");
+
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print("❌ Error de red: $e");
+      return false;
+    }
+  
+}
+
+
+// --- ACTUALIZAR CATEGORÍA (PUT) ---
+  static Future<bool> updateCategory(String token, int id, String name, String type) async {
+  try {
+    // Aseguramos que la URL sea limpia: base + /categories/ + id
+    final baseUrlClean = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final url = Uri.parse("$baseUrlClean/categories/$id");
+
+    print("🚀 Intentando PUT a: $url");
+
     final response = await http.put(
-      Uri.parse("$baseUrl/categories/$id"), // Verifica si tu API usa / al final
+      url,
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer $token"
+        "Authorization": "Bearer $token",
       },
-      body: jsonEncode({"name": name, "type": type}),
+      body: jsonEncode({
+        "name": name,
+        "type": type,
+      }),
     );
-    return response.statusCode == 200;
-  }
 
+    print("📊 Status del Backend: ${response.statusCode}");
+    return response.statusCode == 200;
+  } catch (e) {
+    print("❌ Error de red: $e");
+    return false;
+  }
+}
   // --- ELIMINAR (DELETE) ---
   static Future<bool> deleteCategory(String token, int id) async {
     try {

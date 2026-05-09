@@ -1,7 +1,13 @@
 # Importaciones
+import os
+import os
+import shutil
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+import models  # ✅ Esto funciona porque models.py está en la misma raíz
+from backend.routers.user_routes import get_current_user
 from database import SessionLocal
 from models import User, PasswordResetToken
 from security import hash_password, verify_password, create_reset_token, get_expiration
@@ -157,3 +163,32 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     db.commit()
 
     return {"msg": "Contraseña actualizada"}
+
+@router.post("/upload-profile-picture")
+async def upload_image(
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(get_current_user) # Importante para saber de quién es la foto
+):
+    # 1. Crear carpeta si no existe
+    if not os.path.exists("static/profile_pics"):
+        os.makedirs("static/profile_pics")
+
+    # 2. Nombre de archivo único para evitar que se sobrescriban
+    extension = file.filename.split(".")[-1]
+    file_name = f"user_{current_user.id}.{extension}"
+    file_path = f"static/profile_pics/{file_name}"
+    
+    # 3. Guardar el archivo físicamente
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # 4. CREAR URL Y GUARDAR EN POSTGRESQL
+    url_completa = f"https://finara-api-1lmd.onrender.com/{file_path}"
+    
+    current_user.profile_image_url = url_completa # Asignamos la URL al modelo del usuario
+    db.add(current_user) # Aseguramos que SQLAlchemy lo siga
+    db.commit() # ¡ESTO guarda la URL en la base de datos!
+    db.refresh(current_user)
+    
+    return {"url": url_completa}
