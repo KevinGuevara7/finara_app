@@ -152,6 +152,7 @@ class _AdminVideosScreenState extends State<AdminVideosScreen> {
 
               if (success) {
                 showSnack(context, "Categoría actualizada", isSuccess: true);
+                loadCategories();
               } else {
                 showSnack(context, "Error al actualizar", isError: true);
               }

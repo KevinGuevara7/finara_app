@@ -394,7 +394,7 @@ class ApiService {
     }
 
     final response = await http.put(
-      Uri.parse("$baseUrl/videos/categories/$id"),
+      Uri.parse("$baseUrl/videos/video-categories/$id"),
       headers: {
         "Content-Type": "application/json",
       },
@@ -404,15 +404,21 @@ class ApiService {
       }),
     );
 
-    return response.statusCode == 200;
+    print("STATUS: ${response.statusCode}");
+    print("BODY: ${response.body}");
+
+    return response.statusCode == 200 || response.statusCode == 204;
   }
 
   static Future<bool> deleteVideoCategory(int id) async {
     final response = await http.delete(
-      Uri.parse("$baseUrl/videos/categories/$id"),
+      Uri.parse("$baseUrl/videos/video-categories/$id"),
     );
 
-    return response.statusCode == 200;
+    print("STATUS: ${response.statusCode}");
+    print("BODY: ${response.body}");
+
+    return response.statusCode == 200 || response.statusCode == 204;
   }
 
   // CRUD Videos
