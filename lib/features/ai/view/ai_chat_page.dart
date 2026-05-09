@@ -1,4 +1,3 @@
-
 // INICIO DE IMPORTACIONES
 import 'package:flutter/material.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
@@ -216,7 +215,7 @@ class _AIChatPageState extends State<AIChatPage> {
     setState(() { _messages.insert(0, response); _isLoading = false; });
   }
   // FIN DE LÓGICA DE CHAT E HISTORIAL
-  
+   
 
 
 
@@ -265,7 +264,7 @@ class _AIChatPageState extends State<AIChatPage> {
           ),
           const SizedBox(height: 12),
           Padding(
-            padding: const EdgeInsets.only(bottom: 200),
+            padding: const EdgeInsets.only(bottom: 220), // Ajustado por el nuevo alto de la barra
             child: FloatingActionButton(
               heroTag: "btnEdit",
               onPressed: () => _abrirEditorNota(),
@@ -283,20 +282,25 @@ class _AIChatPageState extends State<AIChatPage> {
               decoration: BoxDecoration(gradient: LinearGradient(colors: [primaryGreen, accentGreen])),
               child: const Center(child: Icon(Icons.auto_awesome, color: Colors.white, size: 40)),
             ),
-            _buildToolItem("Analista de Bolsa", "Activo", Icons.trending_up, true),
-            _buildToolItem("Monitor de Gastos", "Sincronizado", Icons.account_balance_wallet, true),
+            // Solo Historial Reciente como solicitaste
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Text("HISTORIAL RECIENTE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ),
             const Divider(),
-            const Text("HISTORIAL RECIENTE", style: TextStyle(fontSize: 10, color: Colors.grey)),
             Expanded(
               child: FutureBuilder<List<Map<String, dynamic>>>(
                 future: _aiService.getSessions(authProvider.token!),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const SizedBox();
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                   return ListView.builder(
                     itemCount: snapshot.data!.length,
                     itemBuilder: (context, i) => ListTile(
-                      leading: const Icon(Icons.history),
-                      title: Text("Sesión ${snapshot.data![i]['session_id'].toString().substring(0,6)}"),
+                      leading: const Icon(Icons.history, size: 20),
+                      title: Text(
+                        "Sesión ${snapshot.data![i]['session_id'].toString().substring(0,6)}",
+                        style: const TextStyle(fontSize: 14),
+                      ),
                       onTap: () {
                         setState(() {
                           _messages.clear();
@@ -324,12 +328,10 @@ class _AIChatPageState extends State<AIChatPage> {
     );
   }
 
-  // FIN DEL MÉTODO BUILD
+// FIN DEL MÉTODO BUILD
 
+// INICIO DE COMPONENTES DE UI DEL CHAT (BURBUJAS Y CAJA DE TEXTO)
 
-
-  
-  // INICIO DE COMPONENTES DE UI DEL CHAT (BURBUJAS Y CAJA DE TEXTO)
   Widget _buildBubble(ChatMessage msg, bool isDark) {
     bool isUser = msg.sender == MessageSender.user;
     return Align(
@@ -337,7 +339,10 @@ class _AIChatPageState extends State<AIChatPage> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
         padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(color: isUser ? Colors.blueGrey[800] : const Color(0xFFECFDF5), borderRadius: BorderRadius.circular(15)),
+        decoration: BoxDecoration(
+          color: isUser ? Colors.blueGrey[800] : const Color(0xFFECFDF5), 
+          borderRadius: BorderRadius.circular(15)
+        ),
         child: Text(msg.text, style: TextStyle(color: isUser ? Colors.white : Colors.black87)),
       ),
     );
@@ -345,16 +350,68 @@ class _AIChatPageState extends State<AIChatPage> {
 
   Widget _buildInputSection(bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(20),
-      child: Row(
+      padding: const EdgeInsets.all(15),
+      child: Column(
         children: [
-          Expanded(child: TextField(controller: _chatController, decoration: const InputDecoration(hintText: "Escribe a Daiko..."))),
-          IconButton(onPressed: _sendMessage, icon: Icon(Icons.send, color: primaryGreen)),
+          // Apartado de herramientas (Chips inspirados en Gemini)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildToolChip(Icons.trending_up, "Bolsa", isDark),
+                _buildToolChip(Icons.account_balance_wallet, "Gastos", isDark),
+                _buildToolChip(Icons.code, "Código", isDark),
+                _buildToolChip(Icons.history, "Historial", isDark),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Caja de texto
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _chatController, 
+                  decoration: InputDecoration(
+                    hintText: "Escribe a Daiko...",
+                    filled: true,
+                    fillColor: isDark ? Colors.white10 : Colors.grey[200],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(25),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              CircleAvatar(
+                backgroundColor: primaryGreen,
+                child: IconButton(
+                  onPressed: _sendMessage, 
+                  icon: const Icon(Icons.send, color: Colors.white, size: 20),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
-  
-  // FIN DE COMPONENTES DE UI DEL CHAT
 
+  // Widget auxiliar para los chips de herramientas
+  Widget _buildToolChip(IconData icon, String label, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        avatar: Icon(icon, size: 16, color: primaryGreen),
+        label: Text(label, style: const TextStyle(fontSize: 12)),
+        onPressed: () => _chatController.text = "/$label ",
+        backgroundColor: isDark ? Colors.white10 : Colors.white,
+        shape: StadiumBorder(side: BorderSide(color: Colors.grey.withOpacity(0.2))),
+      ),
+    );
+  }
+
+// FIN DE COMPONENTES DE UI DEL CHAT
 }
