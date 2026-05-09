@@ -82,10 +82,25 @@ class _AdminLecturasScreenState extends State<AdminLecturasScreen> {
                     ),
                   ),
                   onPressed: () async {
+                    final titulo = tituloController.text.trim();
+                    final contenido = contenidoController.text.trim();
+                    final tiempo = tiempoController.text.trim();
+
+                    // 🚨 VALIDACIÓN
+                    if (titulo.isEmpty || contenido.isEmpty || tiempo.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Todos los campos son obligatorios"),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
                     final success = await ApiService.createLectura(
-                      tituloController.text,
-                      contenidoController.text,
-                      tiempoController.text,
+                      titulo,
+                      contenido,
+                      tiempo,
                     );
 
                     if (success) {
@@ -94,7 +109,8 @@ class _AdminLecturasScreenState extends State<AdminLecturasScreen> {
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content: Text("Lectura creada correctamente")),
+                          content: Text("Lectura creada correctamente"),
+                        ),
                       );
                     }
                   },
@@ -155,11 +171,25 @@ class _AdminLecturasScreenState extends State<AdminLecturasScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final titulo = tituloController.text.trim();
+              final contenido = contenidoController.text.trim();
+              final tiempo = tiempoController.text.trim();
+
+              if (titulo.isEmpty || contenido.isEmpty || tiempo.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Todos los campos son obligatorios"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
               final success = await ApiService.updateLectura(
                 lectura["id"],
-                tituloController.text,
-                contenidoController.text,
-                tiempoController.text,
+                titulo,
+                contenido,
+                tiempo,
               );
 
               if (success) {

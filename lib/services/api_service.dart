@@ -464,28 +464,38 @@ class ApiService {
     }
   }
 
-  static Future<bool> createLectura(
-    String titulo,
-    String contenido,
-    String tiempoLectura,
-  ) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/api/lecturas/"),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "titulo": titulo,
-        "contenido": contenido,
-        "tiempo_lectura": tiempoLectura,
-      }),
-    );
-
-    print("CREATE LECTURA STATUS: ${response.statusCode}");
-    print("CREATE LECTURA BODY: ${response.body}");
-
-    return response.statusCode == 200 || response.statusCode == 201;
+ static Future<bool> createLectura(
+  String titulo,
+  String contenido,
+  String tiempoLectura,
+) async {
+  // 🚨 VALIDACIÓN
+  if (titulo.trim().isEmpty ||
+      contenido.trim().isEmpty ||
+      tiempoLectura.trim().isEmpty) {
+    print("Error: campos vacíos en createLectura");
+    return false;
   }
+
+  final response = await http.post(
+    Uri.parse("$baseUrl/api/lecturas/"),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: jsonEncode({
+      "titulo": titulo.trim(),
+      "contenido": contenido.trim(),
+      "tiempo_lectura": tiempoLectura.trim(),
+    }),
+  );
+
+  print("CREATE LECTURA STATUS: ${response.statusCode}");
+  print("CREATE LECTURA BODY: ${response.body}");
+
+  return response.statusCode == 200 || response.statusCode == 201;
+}
+
+  //Delete y Update Lectura
 
   static Future<bool> deleteLectura(int id) async {
     final response = await http.delete(
@@ -499,29 +509,34 @@ class ApiService {
   }
 
   static Future<bool> updateLectura(
-    int id,
-    String titulo,
-    String contenido,
-    String tiempoLectura,
-  ) async {
-    final response = await http.put(
-      Uri.parse("$baseUrl/api/lecturas/$id"),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "titulo": titulo,
-        "contenido": contenido,
-        "tiempo_lectura": tiempoLectura,
-      }),
-    );
-
-    print("UPDATE LECTURA STATUS: ${response.statusCode}");
-    print("UPDATE LECTURA BODY: ${response.body}");
-
-    return response.statusCode == 200;
+  int id,
+  String titulo,
+  String contenido,
+  String tiempoLectura,
+) async {
+  if (titulo.trim().isEmpty ||
+      contenido.trim().isEmpty ||
+      tiempoLectura.trim().isEmpty) {
+    print("Error: campos vacíos en updateLectura");
+    return false;
   }
 
+  final response = await http.put(
+    Uri.parse("$baseUrl/api/lecturas/$id"),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: jsonEncode({
+      "titulo": titulo.trim(),
+      "contenido": contenido.trim(),
+      "tiempo_lectura": tiempoLectura.trim(),
+    }),
+  );
+
+  return response.statusCode == 200;
+}
+
+  // Mensajes
   static Future<List<dynamic>> getMessages(String token, int userId) async {
     final res = await http.get(
       Uri.parse("$baseUrl/messages/$userId"),
