@@ -1,13 +1,20 @@
+
+// INICIO DE IMPORTACIONES
 import 'package:flutter/material.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
-import 'package:provider/provider.dart';
 import '../model/chat_message.dart';
 import '../service/ai_service.dart';
 import '../../../widgets/custom_bottom_nav.dart';
+import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../models/note.dart'; 
 import '../../../services/notes_services.dart'; 
 
+// FIN DE IMPORTACIONES
+
+
+
+// INICIO DE DEFINICIÓN DEL WIDGET PRINCIPAL
 class AIChatPage extends StatefulWidget {
   const AIChatPage({super.key});
 
@@ -15,72 +22,91 @@ class AIChatPage extends StatefulWidget {
   State<AIChatPage> createState() => _AIChatPageState();
 }
 
-class _AIChatPageState extends State<AIChatPage> {
-  final List<ChatMessage> _messages = [];
-  final TextEditingController _controller = TextEditingController();
-  final AIService _aiService = AIService();
-  bool _isLoading = false;
+// FIN DE DEFINICIÓN DEL WIDGET PRINCIPAL
 
-  // --- SERVICIOS Y CONTROLADORES DE NOTAS ---
+
+
+
+// INICIO DEL ESTADO DEL WIDGET (LÓGICA Y UI)
+class _AIChatPageState extends State<AIChatPage> {
+  
+  
+  // INICIO DE VARIABLES DE ESTADO Y CONTROLADORES
+
+  final List<ChatMessage> _messages = [];
+  final TextEditingController _chatController = TextEditingController();
+  final AIService _aiService = AIService();
   final NoteService _noteService = NoteService();
+  
+  bool _isLoading = false;
+  String _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+
+  // Controladores para el Libro/Notas
   final TextEditingController _noteTitleController = TextEditingController();
   final TextEditingController _noteContentController = TextEditingController();
-
-  String _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+  int? _editingNoteId; // Para saber si estamos editando o creando
 
   final Color primaryGreen = const Color(0xFF10B981);
   final Color accentGreen = const Color(0xFF059669);
+  final Color bookColor = const Color(0xFFF4EAD5);
 
-  // --- LÓGICA DEL CUADERNO ---
-  void _mostrarCuaderno() {
+  // FIN DE VARIABLES DE ESTADO Y CONTROLADORES
+
+
+
+  
+  // INICIO DE LÓGICA DE NOTAS (LISTADO Y CRUD)
+
+  
+  //INTERFAZ: LISTADO DE NOTAS (ESTILO XIAOMI)
+  void _verListadoNotas() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
+        height: MediaQuery.of(context).size.height * 0.85,
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 20, right: 20, top: 20,
-        ),
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("MI LIBRO DE NOTAS", 
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2, color: primaryGreen)),
-                IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
-              ],
-            ),
-            const Divider(),
-            TextField(
-              controller: _noteTitleController,
-              decoration: const InputDecoration(hintText: "Título del tema...", border: InputBorder.none),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
+            const Text("MIS APUNTES TÉCNICOS", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+            const SizedBox(height: 20),
             Expanded(
-              child: TextField(
-                controller: _noteContentController,
-                maxLines: null,
-                decoration: const InputDecoration(hintText: "Escribe tus apuntes aquí...", border: InputBorder.none),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryGreen,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                ),
-                onPressed: _guardarEnCuaderno,
-                child: const Text("GUARDAR EN CUADERNO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: FutureBuilder<List<Note>>(
+                future: _noteService.fetchNotes(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  final notas = snapshot.data!;
+                  if (notas.isEmpty) return const Center(child: Text("El libro está en blanco."));
+                  
+                  return ListView.builder(
+                    itemCount: notas.length,
+                    itemBuilder: (context, i) {
+                      final nota = notas[i];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: ListTile(
+                          leading: const Icon(Icons.menu_book, color: Colors.brown),
+                          title: Text(nota.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(nota.content, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                            onPressed: () => _confirmarEliminar(nota.id!),
+                          ),
+                          onTap: () => _abrirEditorNota(nota), // 2. METODO PARA ENTRAR Y EDITAR
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],
@@ -89,102 +115,208 @@ class _AIChatPageState extends State<AIChatPage> {
     );
   }
 
-  void _guardarEnCuaderno() async {
-    if (_noteTitleController.text.isEmpty || _noteContentController.text.isEmpty) return;
-    final success = await _noteService.saveNote(
-      Note(
-        title: _noteTitleController.text,
-        content: _noteContentController.text,
-        categoryName: "Libro / AI"
-      ),
-    );
-    if (success) {
+  // EDITOR DE NOTAS (CRUD: CREAR/EDITAR) ---
+  void _abrirEditorNota([Note? nota]) {
+    if (nota != null) {
+      _editingNoteId = nota.id;
+      _noteTitleController.text = nota.title;
+      _noteContentController.text = nota.content;
+    } else {
+      _editingNoteId = null;
       _noteTitleController.clear();
       _noteContentController.clear();
-      if (!mounted) return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        decoration: BoxDecoration(color: bookColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(30))),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 25, right: 25, top: 20),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(_editingNoteId == null ? "NUEVO APUNTE" : "EDITANDO LIBRO", 
+                  style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, color: Colors.brown)),
+                IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+              ],
+            ),
+            TextField(
+              controller: _noteTitleController,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF3E2723)),
+              decoration: const InputDecoration(hintText: "Título...", border: InputBorder.none),
+            ),
+            Expanded(
+              child: TextField(
+                controller: _noteContentController,
+                maxLines: null,
+                style: const TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF4E342E)),
+                decoration: const InputDecoration(hintText: "Escribe aquí...", border: InputBorder.none),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: ElevatedButton(
+                onPressed: _guardarCambiosNota,
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5D4037), minimumSize: const Size(double.infinity, 50)),
+                child: const Text("FIRMAR Y GUARDAR", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _guardarCambiosNota() async {
+    final success = await _noteService.saveNote(
+      Note(
+        id: _editingNoteId, 
+        title: _noteTitleController.text, 
+        content: _noteContentController.text,
+        categoryName: "General"
+      ),
+    );
+    if (success && mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(backgroundColor: primaryGreen, content: const Text("Apunte guardado con éxito")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cambios guardados")));
+      setState(() {});
     }
   }
 
-  // --- LÓGICA DE CHAT ---
+  void _confirmarEliminar(int id) async {
+    final success = await _noteService.deleteNote(id);
+    if (success && mounted) {
+      setState(() {});
+      Navigator.pop(context); // Cierra el listado para refrescar
+      _verListadoNotas(); // Reabre el listado actualizado
+    }
+  }
+
+  // FIN DE LÓGICA DE NOTAS
+
+
+
+
+  // INICIO DE LÓGICA DE CHAT E HISTORIAL
+  
   void _sendMessage() async {
-    if (_controller.text.isEmpty) return;
+    if (_chatController.text.isEmpty) return;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final String? userToken = authProvider.token;
-    if (userToken == null) return;
-
-    final userMsg = ChatMessage(text: _controller.text, sender: MessageSender.user, timestamp: DateTime.now());
+    final userMsg = ChatMessage(text: _chatController.text, sender: MessageSender.user, timestamp: DateTime.now());
     setState(() { _messages.insert(0, userMsg); _isLoading = true; });
-    _controller.clear();
-
-    try {
-      final response = await _aiService.sendMessageToDaiko(
-        prompt: userMsg.text,
-        token: userToken,
-        history: _messages,
-        sessionId: _currentSessionId,
-      );
-      if (!mounted) return;
-      setState(() { _messages.insert(0, response); _isLoading = false; });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-    }
+    _chatController.clear();
+    final response = await _aiService.sendMessageToDaiko(
+      prompt: userMsg.text, token: authProvider.token!, history: _messages, sessionId: _currentSessionId,
+    );
+    setState(() { _messages.insert(0, response); _isLoading = false; });
   }
+  // FIN DE LÓGICA DE CHAT E HISTORIAL
+  
+
+
+
+  // INICIO DE COMPONENTES AUXILIARES DE UI (DRAWER ITEMS)
+
+  Widget _buildToolItem(String title, String desc, IconData icon, bool isActive) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isActive ? primaryGreen.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: isActive ? primaryGreen : Colors.grey, size: 20),
+          const SizedBox(width: 12),
+          Expanded(child: Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: isActive ? primaryGreen : Colors.grey))),
+          if (isActive) Icon(Icons.check_circle, color: primaryGreen, size: 14),
+        ],
+      ),
+    );
+  }
+
+  // FIN DE COMPONENTES AUXILIARES DE UI
+
+
+
+  // INICIO DEL MÉTODO BUILD (CONSTRUCCIÓN PRINCIPAL DE LA PANTALLA)
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authProvider = Provider.of<AuthProvider>(context);
-    final String userToken = authProvider.token ?? "";
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-      appBar: _buildAppBar(isDark),
-      drawer: _buildDrawer(isDark, userToken),
-      
-      // --- BOTÓN FLOTANTE LATERAL (ESTILO PESTAÑA) ---
-      floatingActionButton: Stack(
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Positioned(
-            right: -5, // Ligeramente pegado al borde
-            top: MediaQuery.of(context).size.height * 0.4, // Centro-derecha
-            child: GestureDetector(
-              onTap: _mostrarCuaderno,
-              child: Container(
-                width: 55, height: 70,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF5D4037),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20), 
-                    bottomLeft: Radius.circular(20)
-                  ),
-                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10, offset: const Offset(-2, 4))],
-                ),
-                child: const Icon(Icons.menu_book, color: Color(0xFFF4EAD5), size: 30),
-              ),
+          FloatingActionButton.small(
+            heroTag: "btnList",
+            onPressed: _verListadoNotas,
+            backgroundColor: Colors.grey[800],
+            child: const Icon(Icons.list_alt, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 200),
+            child: FloatingActionButton(
+              heroTag: "btnEdit",
+              onPressed: () => _abrirEditorNota(),
+              backgroundColor: const Color(0xFF5D4037),
+              child: const Icon(Icons.edit, color: Color(0xFFF4EAD5)),
             ),
           ),
         ],
       ),
-
+      drawer: Drawer(
+        backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+        child: Column(
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(gradient: LinearGradient(colors: [primaryGreen, accentGreen])),
+              child: const Center(child: Icon(Icons.auto_awesome, color: Colors.white, size: 40)),
+            ),
+            _buildToolItem("Analista de Bolsa", "Activo", Icons.trending_up, true),
+            _buildToolItem("Monitor de Gastos", "Sincronizado", Icons.account_balance_wallet, true),
+            const Divider(),
+            const Text("HISTORIAL RECIENTE", style: TextStyle(fontSize: 10, color: Colors.grey)),
+            Expanded(
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: _aiService.getSessions(authProvider.token!),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox();
+                  return ListView.builder(
+                    itemCount: snapshot.data!.length,
+                    itemBuilder: (context, i) => ListTile(
+                      leading: const Icon(Icons.history),
+                      title: Text("Sesión ${snapshot.data![i]['session_id'].toString().substring(0,6)}"),
+                      onTap: () {
+                        setState(() {
+                          _messages.clear();
+                          _currentSessionId = snapshot.data![i]['session_id'];
+                        });
+                        Navigator.pop(context);
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, title: Text("DAIKO AI", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold))),
       body: Column(
         children: [
-          Expanded(
-            child: ListView.builder(
-              reverse: true,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return _buildChatBubble(msg, isDark, index == 0);
-              },
-            ),
-          ),
-          if (_isLoading) LinearProgressIndicator(color: primaryGreen, backgroundColor: Colors.transparent),
+          Expanded(child: ListView.builder(reverse: true, padding: const EdgeInsets.all(20), itemCount: _messages.length, itemBuilder: (context, i) => _buildBubble(_messages[i], isDark))),
+          if (_isLoading) LinearProgressIndicator(color: primaryGreen),
           _buildInputSection(isDark),
         ],
       ),
@@ -192,95 +324,37 @@ class _AIChatPageState extends State<AIChatPage> {
     );
   }
 
-  // --- WIDGETS DE INTERFAZ ---
-  PreferredSizeWidget _buildAppBar(bool isDark) {
-    return AppBar(
-      backgroundColor: Colors.transparent, elevation: 0,
-      iconTheme: IconThemeData(color: primaryGreen),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("DAIKO AI", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF065F46))),
-          Text("ACTIVE INTELLIGENCE", style: TextStyle(color: primaryGreen, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-        ],
-      ),
-    );
-  }
+  // FIN DEL MÉTODO BUILD
 
-  Widget _buildChatBubble(ChatMessage msg, bool isDark, bool isLast) {
+
+
+  
+  // INICIO DE COMPONENTES DE UI DEL CHAT (BURBUJAS Y CAJA DE TEXTO)
+  Widget _buildBubble(ChatMessage msg, bool isDark) {
     bool isUser = msg.sender == MessageSender.user;
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
-        padding: const EdgeInsets.all(16),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        decoration: BoxDecoration(
-          color: isUser 
-            ? (isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)) 
-            : (isDark ? const Color(0xFF1E293B) : const Color(0xFFECFDF5)),
-          borderRadius: BorderRadius.circular(20),
-          border: isUser ? null : Border.all(color: primaryGreen.withOpacity(0.1)),
-        ),
-        child: !isUser && isLast
-          ? AnimatedTextKit(
-              animatedTexts: [TypewriterAnimatedText(msg.text, speed: const Duration(milliseconds: 20))],
-              totalRepeatCount: 1,
-              displayFullTextOnTap: true,
-            )
-          : Text(msg.text, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14)),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(color: isUser ? Colors.blueGrey[800] : const Color(0xFFECFDF5), borderRadius: BorderRadius.circular(15)),
+        child: Text(msg.text, style: TextStyle(color: isUser ? Colors.white : Colors.black87)),
       ),
     );
   }
 
   Widget _buildInputSection(bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              style: TextStyle(color: isDark ? Colors.white : Colors.black),
-              decoration: InputDecoration(
-                hintText: "Pregunta a Daiko...",
-                filled: true,
-                fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(25), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          CircleAvatar(
-            backgroundColor: primaryGreen,
-            radius: 25,
-            child: IconButton(onPressed: _sendMessage, icon: const Icon(Icons.send, color: Colors.white, size: 20)),
-          ),
+          Expanded(child: TextField(controller: _chatController, decoration: const InputDecoration(hintText: "Escribe a Daiko..."))),
+          IconButton(onPressed: _sendMessage, icon: Icon(Icons.send, color: primaryGreen)),
         ],
       ),
     );
   }
+  
+  // FIN DE COMPONENTES DE UI DEL CHAT
 
-  Widget _buildDrawer(bool isDark, String token) {
-    return Drawer(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-      child: Column(
-        children: [
-          DrawerHeader(
-            decoration: BoxDecoration(gradient: LinearGradient(colors: [primaryGreen, accentGreen])),
-            child: const Center(child: Icon(Icons.auto_awesome, color: Colors.white, size: 50)),
-          ),
-          ListTile(
-            leading: const Icon(Icons.refresh),
-            title: const Text("Nueva Sesión"),
-            onTap: () {
-              setState(() { _messages.clear(); _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString(); });
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
-    );
-  }
 }
