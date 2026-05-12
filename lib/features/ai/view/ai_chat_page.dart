@@ -171,7 +171,13 @@ class _AIChatPageState extends State<AIChatPage> {
     );
     if (success && mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cambios guardados")));
+      ScaffoldMessenger.of
+      (context).showSnackBar(
+        const SnackBar(
+          content: Text("Cambios guardados con éxito"),
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
       setState(() {});
     }
   }
