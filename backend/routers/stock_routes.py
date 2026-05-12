@@ -1,9 +1,8 @@
-from datetime import time
 import os
 import requests
 from fastapi import APIRouter
 
-stock_router = APIRouter(
+router = APIRouter(
     prefix="/api/stocks",
     tags=["Stocks API"]
 )
@@ -23,7 +22,7 @@ SYMBOLS = [
     "INTC"    # Intel
 ]
 
-@stock_router.get("/")
+@router.get("/")
 def get_stocks():
     stocks = []
 
@@ -41,7 +40,7 @@ def get_stocks():
 
     return stocks
 
-@stock_router.get("/history")
+@router.get("/history")
 def get_stock_history(symbol: str, range: str = "1W"):
     url = f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={API_KEY}"
     
