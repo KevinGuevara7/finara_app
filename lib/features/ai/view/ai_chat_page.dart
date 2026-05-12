@@ -1,6 +1,5 @@
 // INICIO DE IMPORTACIONES
 import 'package:flutter/material.dart';
-import 'package:animated_text_kit/animated_text_kit.dart';
 import '../model/chat_message.dart';
 import '../service/ai_service.dart';
 import '../../../widgets/custom_bottom_nav.dart';
@@ -11,8 +10,6 @@ import '../../../services/notes_services.dart';
 
 // FIN DE IMPORTACIONES
 
-
-
 // INICIO DE DEFINICIÓN DEL WIDGET PRINCIPAL
 class AIChatPage extends StatefulWidget {
   const AIChatPage({super.key});
@@ -20,18 +17,12 @@ class AIChatPage extends StatefulWidget {
   @override
   State<AIChatPage> createState() => _AIChatPageState();
 }
-
 // FIN DE DEFINICIÓN DEL WIDGET PRINCIPAL
-
-
-
 
 // INICIO DEL ESTADO DEL WIDGET (LÓGICA Y UI)
 class _AIChatPageState extends State<AIChatPage> {
   
-  
   // INICIO DE VARIABLES DE ESTADO Y CONTROLADORES
-  
   final List<ChatMessage> _messages = [];
   final TextEditingController _chatController = TextEditingController();
   final AIService _aiService = AIService();
@@ -51,16 +42,11 @@ class _AIChatPageState extends State<AIChatPage> {
   final Color primaryGreen = const Color(0xFF10B981);
   final Color accentGreen = const Color(0xFF059669);
   final Color bookColor = const Color(0xFFF4EAD5);
-
   // FIN DE VARIABLES DE ESTADO Y CONTROLADORES
 
-
-
-  
   // INICIO DE LÓGICA DE NOTAS (LISTADO Y CRUD)
-
   
-  //INTERFAZ: LISTADO DE NOTAS (ESTILO XIAOMI)
+  // INTERFAZ: LISTADO DE NOTAS (ESTILO XIAOMI)
   void _verListadoNotas() {
     showModalBottomSheet(
       context: context,
@@ -117,7 +103,7 @@ class _AIChatPageState extends State<AIChatPage> {
     );
   }
 
-  // EDITOR DE NOTAS (CRUD: CREAR/EDITAR) ---
+  // EDITOR DE NOTAS (CRUD: CREAR/EDITAR)
   void _abrirEditorNota([Note? nota]) {
     if (nota != null) {
       _editingNoteId = nota.id;
@@ -198,14 +184,9 @@ class _AIChatPageState extends State<AIChatPage> {
       _verListadoNotas(); // Reabre el listado actualizado
     }
   }
-
   // FIN DE LÓGICA DE NOTAS
 
-
-
-
   // INICIO DE LÓGICA DE CHAT E HISTORIAL
-  
   void _sendMessage() async {
     if (_chatController.text.isEmpty) return;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -218,12 +199,8 @@ class _AIChatPageState extends State<AIChatPage> {
     setState(() { _messages.insert(0, response); _isLoading = false; });
   }
   // FIN DE LÓGICA DE CHAT E HISTORIAL
-   
-
-
 
   // INICIO DE COMPONENTES AUXILIARES DE UI (DRAWER ITEMS)
-
   Widget _buildToolItem(String title, String desc, IconData icon, bool isActive) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -242,13 +219,9 @@ class _AIChatPageState extends State<AIChatPage> {
       ),
     );
   }
-
   // FIN DE COMPONENTES AUXILIARES DE UI
 
-
-
   // INICIO DEL MÉTODO BUILD (CONSTRUCCIÓN PRINCIPAL DE LA PANTALLA)
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -285,7 +258,6 @@ class _AIChatPageState extends State<AIChatPage> {
               decoration: BoxDecoration(gradient: LinearGradient(colors: [primaryGreen, accentGreen])),
               child: const Center(child: Icon(Icons.auto_awesome, color: Colors.white, size: 40)),
             ),
-            // Solo Historial Reciente como solicitaste
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 10),
               child: Text("HISTORIAL RECIENTE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
@@ -330,11 +302,9 @@ class _AIChatPageState extends State<AIChatPage> {
       bottomNavigationBar: const CustomBottomNav(selectedIndex: 2),
     );
   }
+  // FIN DEL MÉTODO BUILD
 
-// FIN DEL MÉTODO BUILD
-
-/// INICIO DE COMPONENTES DE UI DEL CHAT (BURBUJAS Y CAJA DE TEXTO)
-
+  // INICIO DE COMPONENTES DE UI DEL CHAT (BURBUJAS Y CAJA DE TEXTO)
   Widget _buildBubble(ChatMessage msg, bool isDark) {
     bool isUser = msg.sender == MessageSender.user;
     return Align(
@@ -356,10 +326,8 @@ class _AIChatPageState extends State<AIChatPage> {
       padding: const EdgeInsets.all(15),
       child: Column(
         children: [
-          // Caja de entrada con selector de herramientas (Estilo silencioso)
           Row(
             children: [
-              // BOTÓN SELECTOR DE HERRAMIENTA
               _buildToolSelector(isDark),
               const SizedBox(width: 8),
               Expanded(
@@ -392,7 +360,6 @@ class _AIChatPageState extends State<AIChatPage> {
     );
   }
 
-  // Widget que crea el botón desplegable (Actualiza el estado sin escribir en el TextField)
   Widget _buildToolSelector(bool isDark) {
     return PopupMenuButton<String>(
       offset: const Offset(0, -220),
@@ -406,7 +373,6 @@ class _AIChatPageState extends State<AIChatPage> {
         ),
         child: Row(
           children: [
-            // Muestra la herramienta seleccionada actualmente
             Text(_selectedTool, style: TextStyle(fontSize: 13, color: isDark ? Colors.white : Colors.black87)),
             const Icon(Icons.keyboard_arrow_down, size: 18),
           ],
@@ -414,7 +380,7 @@ class _AIChatPageState extends State<AIChatPage> {
       ),
       onSelected: (String value) {
         setState(() {
-          _selectedTool = value; // Cambio de estado interno
+          _selectedTool = value; 
         });
       },
       itemBuilder: (BuildContext context) => [
@@ -426,7 +392,6 @@ class _AIChatPageState extends State<AIChatPage> {
     );
   }
 
-  // Crea cada fila del menú con Título, Descripción e Icono de check dinámico
   PopupMenuItem<String> _buildPopupItem(String title, String subtitle, IconData icon, bool isSelected, bool isDark) {
     return PopupMenuItem<String>(
       value: title,
@@ -449,6 +414,4 @@ class _AIChatPageState extends State<AIChatPage> {
       ),
     );
   }
-
-// FIN DE COMPONENTES DE UI DEL CHAT
 }
