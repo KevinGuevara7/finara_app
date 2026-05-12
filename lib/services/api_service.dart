@@ -174,7 +174,7 @@ class ApiService {
   static Future<bool> createCategory(String token, String name, String type) async {
     try {
       final response = await http.post(
-        Uri.parse("$baseUrl/categories"),
+        Uri.parse("$baseUrl/categories/"),
         headers: _jsonHeaders(token),
         body: jsonEncode({"name": name, "type": type}),
       );
