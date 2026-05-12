@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../models/note.dart'; 
 import '../../../services/notes_services.dart'; 
-
 // FIN DE IMPORTACIONES
 
 // INICIO DE DEFINICIÓN DEL WIDGET PRINCIPAL
@@ -89,7 +88,7 @@ class _AIChatPageState extends State<AIChatPage> {
                             icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                             onPressed: () => _confirmarEliminar(nota.id!),
                           ),
-                          onTap: () => _abrirEditorNota(nota), // 2. METODO PARA ENTRAR Y EDITAR
+                          onTap: () => _abrirEditorNota(nota),
                         ),
                       );
                     },
@@ -160,7 +159,10 @@ class _AIChatPageState extends State<AIChatPage> {
     );
   }
 
+  // --- LÓGICA DE GUARDADO MEJORADA ---
   void _guardarCambiosNota() async {
+    print("💾 --- INICIANDO PROCESO DE GUARDADO ---");
+    
     final success = await _noteService.saveNote(
       Note(
         id: _editingNoteId, 
@@ -169,25 +171,61 @@ class _AIChatPageState extends State<AIChatPage> {
         categoryName: "General"
       ),
     );
-    if (success && mounted) {
+    
+    print("📡 RESPUESTA DEL SERVIDOR (GUARDAR): $success");
+
+    if (!mounted) return;
+
+    if (success) {
+      print("✅ ¡Nota guardada exitosamente!");
       Navigator.pop(context);
-      ScaffoldMessenger.of
-      (context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Cambios guardados con éxito"),
           backgroundColor: Color(0xFF10B981),
         ),
       );
       setState(() {});
+    } else {
+      print("❌ ERROR: El servidor no pudo procesar el guardado.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Error al guardar: Revisa la consola para más detalles"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
+  // --- LÓGICA DE ELIMINACIÓN MEJORADA ---
   void _confirmarEliminar(int id) async {
+    print("🕵️‍♂️ --- INTENTANDO ELIMINAR APUNTE ID: $id ---");
+    
     final success = await _noteService.deleteNote(id);
-    if (success && mounted) {
+    
+    print("📡 RESPUESTA DEL SERVIDOR (ELIMINAR): $success");
+
+    if (!mounted) return;
+
+    if (success) {
+      print("✅ ¡Apunte eliminado con éxito!");
       setState(() {});
-      Navigator.pop(context); // Cierra el listado para refrescar
-      _verListadoNotas(); // Reabre el listado actualizado
+      Navigator.pop(context); 
+      _verListadoNotas(); 
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Apunte eliminado correctamente"), 
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
+    } else {
+      print("❌ ERROR: Falló la eliminación.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Error al eliminar el apunte"), 
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
   // FIN DE LÓGICA DE NOTAS
@@ -246,7 +284,7 @@ class _AIChatPageState extends State<AIChatPage> {
           ),
           const SizedBox(height: 12),
           Padding(
-            padding: const EdgeInsets.only(bottom: 220), // Ajustado por el nuevo alto de la barra
+            padding: const EdgeInsets.only(bottom: 220), 
             child: FloatingActionButton(
               heroTag: "btnEdit",
               onPressed: () => _abrirEditorNota(),
