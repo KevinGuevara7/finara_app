@@ -247,7 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return NetworkImage(imageUrl);
   }
-
+  
   double getBalance() {
     double total = 0;
 
@@ -1299,7 +1299,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             .showSnackBar(
                                           const SnackBar(
                                               content: Text(
-                                                  "Selecciona una categorÃ­a")),
+                                                  "Selecciona una categor­a")),
                                         );
                                         return;
                                       }

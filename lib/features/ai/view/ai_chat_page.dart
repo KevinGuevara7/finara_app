@@ -31,7 +31,7 @@ class _AIChatPageState extends State<AIChatPage> {
   
   
   // INICIO DE VARIABLES DE ESTADO Y CONTROLADORES
-
+  
   final List<ChatMessage> _messages = [];
   final TextEditingController _chatController = TextEditingController();
   final AIService _aiService = AIService();
@@ -40,10 +40,13 @@ class _AIChatPageState extends State<AIChatPage> {
   bool _isLoading = false;
   String _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString();
 
+  // Herramienta seleccionada para el selector de la UI
+  String _selectedTool = "Rápido";
+
   // Controladores para el Libro/Notas
   final TextEditingController _noteTitleController = TextEditingController();
   final TextEditingController _noteContentController = TextEditingController();
-  int? _editingNoteId; // Para saber si estamos editando o creando
+  int? _editingNoteId; 
 
   final Color primaryGreen = const Color(0xFF10B981);
   final Color accentGreen = const Color(0xFF059669);
@@ -330,7 +333,7 @@ class _AIChatPageState extends State<AIChatPage> {
 
 // FIN DEL MÉTODO BUILD
 
-// INICIO DE COMPONENTES DE UI DEL CHAT (BURBUJAS Y CAJA DE TEXTO)
+/// INICIO DE COMPONENTES DE UI DEL CHAT (BURBUJAS Y CAJA DE TEXTO)
 
   Widget _buildBubble(ChatMessage msg, bool isDark) {
     bool isUser = msg.sender == MessageSender.user;
@@ -353,25 +356,15 @@ class _AIChatPageState extends State<AIChatPage> {
       padding: const EdgeInsets.all(15),
       child: Column(
         children: [
-          // Apartado de herramientas (Chips inspirados en Gemini)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildToolChip(Icons.trending_up, "Bolsa", isDark),
-                _buildToolChip(Icons.account_balance_wallet, "Gastos", isDark),
-                _buildToolChip(Icons.code, "Código", isDark),
-                _buildToolChip(Icons.history, "Historial", isDark),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          // Caja de texto
+          // Caja de entrada con selector de herramientas (Estilo silencioso)
           Row(
             children: [
+              // BOTÓN SELECTOR DE HERRAMIENTA
+              _buildToolSelector(isDark),
+              const SizedBox(width: 8),
               Expanded(
                 child: TextField(
-                  controller: _chatController, 
+                  controller: _chatController,
                   decoration: InputDecoration(
                     hintText: "Escribe a Daiko...",
                     filled: true,
@@ -388,7 +381,7 @@ class _AIChatPageState extends State<AIChatPage> {
               CircleAvatar(
                 backgroundColor: primaryGreen,
                 child: IconButton(
-                  onPressed: _sendMessage, 
+                  onPressed: _sendMessage,
                   icon: const Icon(Icons.send, color: Colors.white, size: 20),
                 ),
               ),
@@ -399,16 +392,60 @@ class _AIChatPageState extends State<AIChatPage> {
     );
   }
 
-  // Widget auxiliar para los chips de herramientas
-  Widget _buildToolChip(IconData icon, String label, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ActionChip(
-        avatar: Icon(icon, size: 16, color: primaryGreen),
-        label: Text(label, style: const TextStyle(fontSize: 12)),
-        onPressed: () => _chatController.text = "/$label ",
-        backgroundColor: isDark ? Colors.white10 : Colors.white,
-        shape: StadiumBorder(side: BorderSide(color: Colors.grey.withOpacity(0.2))),
+  // Widget que crea el botón desplegable (Actualiza el estado sin escribir en el TextField)
+  Widget _buildToolSelector(bool isDark) {
+    return PopupMenuButton<String>(
+      offset: const Offset(0, -220),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white10 : Colors.grey[200],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            // Muestra la herramienta seleccionada actualmente
+            Text(_selectedTool, style: TextStyle(fontSize: 13, color: isDark ? Colors.white : Colors.black87)),
+            const Icon(Icons.keyboard_arrow_down, size: 18),
+          ],
+        ),
+      ),
+      onSelected: (String value) {
+        setState(() {
+          _selectedTool = value; // Cambio de estado interno
+        });
+      },
+      itemBuilder: (BuildContext context) => [
+        _buildPopupItem("Rápido", "Responde rápidamente", Icons.bolt, _selectedTool == "Rápido", isDark),
+        _buildPopupItem("Pensar", "Resuelve problemas complejos", Icons.psychology, _selectedTool == "Pensar", isDark),
+        _buildPopupItem("Bolsa", "Análisis de mercado avanzado", Icons.trending_up, _selectedTool == "Bolsa", isDark),
+        _buildPopupItem("Gastos", "Gestión financiera detallada", Icons.account_balance_wallet, _selectedTool == "Gastos", isDark),
+      ],
+    );
+  }
+
+  // Crea cada fila del menú con Título, Descripción e Icono de check dinámico
+  PopupMenuItem<String> _buildPopupItem(String title, String subtitle, IconData icon, bool isSelected, bool isDark) {
+    return PopupMenuItem<String>(
+      value: title,
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: isSelected ? primaryGreen : Colors.grey),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isDark ? Colors.white : Colors.black87)),
+                Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              ],
+            ),
+          ),
+          if (isSelected) Icon(Icons.check_circle, size: 18, color: primaryGreen),
+        ],
       ),
     );
   }
